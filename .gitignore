@@ -24,6 +24,9 @@
 .DS_Store
 *.pem
 
+# local SSH tunnel test config (contains a private key — never commit)
+services/ssh-tunnel/test_config.txt
+
 # debug
 npm-debug.log*
 yarn-debug.log*
@@ -39,3 +42,5 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+docs/*
