@@ -8,9 +8,12 @@
     "start": "next start",
     "lint": "eslint",
     "test:tunnel": "tsx src/lib/ssh-tunnel/test-connect.ts",
-    "test:db": "tsx src/lib/mysql-runner/test-run.ts"
+    "test:db": "tsx src/lib/mysql-runner/test-run.ts",
+    "test:internal-db": "tsx src/lib/db/test-db.ts",
+    "db:build": "tsx src/lib/db/build-schema.ts"
   },
   "dependencies": {
+    "better-sqlite3": "^12.10.1",
     "mysql2": "^3.22.5",
     "next": "16.2.9",
     "react": "19.2.4",
@@ -19,6 +22,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

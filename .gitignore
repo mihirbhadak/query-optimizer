@@ -27,6 +27,12 @@
 # local test configs (contain real credentials / private keys — never commit)
 mihir/test/config/
 
+# internal SQLite database files (never commit)
+/.data/
+*.db
+*.db-wal
+*.db-shm
+
 # debug
 npm-debug.log*
 yarn-debug.log*
