@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 
-import TunnelDashboard from "@/components/TunnelDashboard";
+import TunnelDashboard from "./TunnelDashboard";
 import { dashboardEnabled } from "@/lib/ssh-tunnel/dashboard";
 
 export const metadata = { title: "SSH Tunnels (temp)" };

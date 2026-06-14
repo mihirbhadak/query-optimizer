@@ -91,7 +91,7 @@ Tuning is via optional env vars (all have defaults) — see `config.ts`
 ## Test
 
 ```bash
-npm run test:tunnel                       # uses services/ssh-tunnel/test_config.txt
+npm run test:tunnel                       # uses mihir/test/config/ssh_tunnel.txt
 npm run test:tunnel -- path/to/config.txt
 # override the DB target probed:
 SSH_TUNNEL_TEST_TARGET_HOST=127.0.0.1 SSH_TUNNEL_TEST_TARGET_PORT=3306 npm run test:tunnel

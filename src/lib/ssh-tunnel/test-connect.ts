@@ -1,7 +1,7 @@
 /**
  * Manual smoke test for the SSH tunnel manager.
  *
- *   npm run test:tunnel                       # uses services/ssh-tunnel/test_config.txt
+ *   npm run test:tunnel                       # uses mihir/test/config/ssh_tunnel.txt
  *   npm run test:tunnel -- path/to/config.txt # custom config
  *
  * Config file format:
@@ -30,11 +30,12 @@ interface ParsedConfig {
   passphrase?: string;
 }
 
-function parseConfig(raw: string): ParsedConfig {
-  const host = /^\s*host:\s*(.+?)\s*$/im.exec(raw)?.[1];
-  const user = /^\s*user:\s*(.+?)\s*$/im.exec(raw)?.[1];
+function parseConfig(input: string): ParsedConfig {
+  const raw = input.replace(/\r\n/g, "\n"); // normalize CRLF
+  const host = /^\s*host:\s*(.+?)\s*$/im.exec(raw)?.[1]?.trim();
+  const user = /^\s*user:\s*(.+?)\s*$/im.exec(raw)?.[1]?.trim();
   const keyMatch = /(-----BEGIN [^-]+ KEY-----[\s\S]+?-----END [^-]+ KEY-----)/.exec(raw);
-  const passphrase = /^\s*passphrase:\s*(.+?)\s*$/im.exec(raw)?.[1];
+  const passphrase = /^\s*passphrase:\s*(.+?)\s*$/im.exec(raw)?.[1]?.trim();
 
   if (!host) throw new Error('Config missing "host:".');
   if (!user) throw new Error('Config missing "user:".');
@@ -91,7 +92,7 @@ function probeForward(host: string, port: number): Promise<string> {
 
 async function main(): Promise<void> {
   const configPath = resolve(
-    process.argv[2] ?? "services/ssh-tunnel/test_config.txt",
+    process.argv[2] ?? "mihir/test/config/ssh_tunnel.txt",
   );
   console.log(`Reading config: ${configPath}`);
   const cfg = parseConfig(readFileSync(configPath, "utf8"));

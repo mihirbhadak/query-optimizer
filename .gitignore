@@ -24,8 +24,8 @@
 .DS_Store
 *.pem
 
-# local SSH tunnel test config (contains a private key — never commit)
-services/ssh-tunnel/test_config.txt
+# local test configs (contain real credentials / private keys — never commit)
+mihir/test/config/
 
 # debug
 npm-debug.log*
