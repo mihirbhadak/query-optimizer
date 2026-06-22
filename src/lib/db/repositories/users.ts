@@ -8,7 +8,7 @@ export interface UserInput {
   lastName?: string;
   /** Pre-hashed password (never pass plaintext). */
   password?: string;
-  status?: "active" | "disabled";
+  status?: "pending" | "active" | "rejected" | "deleted";
 }
 
 export const usersRepository = {
@@ -41,8 +41,38 @@ export const usersRepository = {
     return db.prepare("SELECT * FROM users WHERE username = ?").get(username) as User | undefined;
   },
 
+  /** Look up by email OR username (for login). */
+  getByEmailOrUsername(identifier: string): User | undefined {
+    return db
+      .prepare("SELECT * FROM users WHERE email = ? OR username = ? LIMIT 1")
+      .get(identifier, identifier) as User | undefined;
+  },
+
   list(): User[] {
     return db.prepare("SELECT * FROM users ORDER BY username").all() as User[];
+  },
+
+  listByStatus(status: string): User[] {
+    return db
+      .prepare("SELECT * FROM users WHERE status = ? ORDER BY created_at DESC")
+      .all(status) as User[];
+  },
+
+  count(): number {
+    return (db.prepare("SELECT COUNT(*) AS n FROM users").get() as { n: number }).n;
+  },
+
+  /** Patch only the provided columns. Keys must be real column names. */
+  update(
+    id: number,
+    patch: Partial<Pick<User, "username" | "email" | "first_name" | "last_name" | "status" | "password">>,
+  ): User | undefined {
+    const entries = Object.entries(patch).filter(([, v]) => v !== undefined);
+    if (entries.length > 0) {
+      const set = entries.map(([k]) => `${k} = @${k}`).join(", ");
+      db.prepare(`UPDATE users SET ${set} WHERE id = @id`).run({ ...Object.fromEntries(entries), id });
+    }
+    return this.getById(id);
   },
 
   delete(id: number): void {

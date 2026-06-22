@@ -24,6 +24,11 @@ export const rolesRepository = {
     return db.prepare("SELECT * FROM roles WHERE name = ?").get(name) as Role | undefined;
   },
 
+  /** Get the role by name, creating it if absent. */
+  getOrCreate(input: { name: string; description?: string; permissions?: Perms }): Role {
+    return this.getByName(input.name) ?? this.create(input);
+  },
+
   list(): Role[] {
     return db.prepare("SELECT * FROM roles ORDER BY name").all() as Role[];
   },
@@ -66,5 +71,22 @@ export const userRolesRepository = {
          WHERE ur.role_id = ? ORDER BY u.username`,
       )
       .all(roleId) as User[];
+  },
+
+  /**
+   * How many distinct ACTIVE users hold a role by name. Active-only so a
+   * soft-deleted/rejected/pending admin doesn't count toward the "must keep one
+   * admin" invariant or the admin-bootstrap check.
+   */
+  countActiveUsersWithRole(roleName: string): number {
+    const row = db
+      .prepare(
+        `SELECT COUNT(DISTINCT ur.user_id) AS n FROM user_roles ur
+         JOIN roles r ON r.id = ur.role_id
+         JOIN users u ON u.id = ur.user_id
+         WHERE r.name = ? AND u.status = 'active'`,
+      )
+      .get(roleName) as { n: number };
+    return row.n;
   },
 };

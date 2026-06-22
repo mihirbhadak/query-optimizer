@@ -28,3 +28,4 @@ export {
   type UserLogEntry,
   type SystemLogEntry,
 } from "./repositories/logs";
+export { settingsRepository } from "./repositories/settings";

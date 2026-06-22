@@ -21,7 +21,7 @@ export interface User {
   email: string;
   /** Password hash (never plaintext). */
   password: string | null;
-  status: "active" | "disabled";
+  status: "pending" | "active" | "rejected" | "deleted";
   created_at: string;
   updated_at: string;
 }

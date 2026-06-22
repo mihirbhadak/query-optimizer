@@ -43,6 +43,16 @@ export const userLogsRepository = {
       .prepare("SELECT * FROM user_logs WHERE workspace_id = ? ORDER BY id DESC LIMIT ?")
       .all(workspaceId, limit) as UserLog[];
   },
+
+  forUser(userId: number, limit = 100): UserLog[] {
+    return db
+      .prepare("SELECT * FROM user_logs WHERE user_id = ? ORDER BY id DESC LIMIT ?")
+      .all(userId, limit) as UserLog[];
+  },
+
+  recent(limit = 100): UserLog[] {
+    return db.prepare("SELECT * FROM user_logs ORDER BY id DESC LIMIT ?").all(limit) as UserLog[];
+  },
 };
 
 /** Append-only system events / errors. */

@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS users (
   last_name TEXT,
   email TEXT NOT NULL UNIQUE,
   password TEXT,
-  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'disabled')),
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('pending', 'active', 'rejected', 'deleted')),
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -32,6 +32,21 @@ CREATE TABLE IF NOT EXISTS roles (
   description TEXT,
   permissions JSON CHECK (permissions IS NULL OR json_valid(permissions))
 );
+
+-- App-level key/value settings (admin-configurable).
+CREATE TABLE IF NOT EXISTS settings (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  key TEXT NOT NULL UNIQUE,
+  value JSON CHECK (value IS NULL OR json_valid(value)),
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TRIGGER IF NOT EXISTS trg_settings_updated_at
+AFTER UPDATE ON settings
+FOR EACH ROW
+BEGIN
+  UPDATE settings SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+END;
 
 -- A company / team / client / project.
 CREATE TABLE IF NOT EXISTS workspaces (

@@ -40,7 +40,12 @@ export const tables: TableSpec[] = [
       text("email", { notNull: true, unique: true }),
       // Store a password HASH (e.g. bcrypt/argon2) — never plaintext.
       text("password"),
-      enumText("status", ["active", "disabled"], { notNull: true, default: "'active'" }),
+      // pending = awaiting admin approval; active = approved/default (can log in);
+      // rejected = signup denied; deleted = soft-deleted. Only "active" can log in.
+      enumText("status", ["pending", "active", "rejected", "deleted"], {
+        notNull: true,
+        default: "'active'",
+      }),
     ],
   },
 
@@ -54,6 +59,14 @@ export const tables: TableSpec[] = [
       text("description"),
       json("permissions"),
     ],
+  },
+
+  // ------------------------------------------------------------- settings
+  {
+    name: "settings",
+    comment: "App-level key/value settings (admin-configurable).",
+    timestamps: true,
+    cols: [pk(), text("key", { notNull: true, unique: true }), json("value")],
   },
 
   // ---------------------------------------------------------- workspaces
