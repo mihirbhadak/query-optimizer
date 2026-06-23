@@ -103,12 +103,26 @@ function columnSql(c: Col): string {
   return parts.join(" ");
 }
 
-function tableSql(t: TableSpec): string {
+/** Full column list for a table (including timestamp columns when enabled). */
+function allCols(t: TableSpec): Col[] {
   const cols = [...t.cols];
   if (t.timestamps) {
     cols.push(ts("created_at", { notNull: true, default: "CURRENT_TIMESTAMP" }));
     cols.push(ts("updated_at", { notNull: true, default: "CURRENT_TIMESTAMP" }));
   }
+  return cols;
+}
+
+/**
+ * Column name + DDL fragment for each column of a table, used by the additive
+ * migrator (../migrate.ts) to `ALTER TABLE ... ADD COLUMN` anything missing.
+ */
+export function tableColumnDefs(t: TableSpec): { name: string; def: string }[] {
+  return allCols(t).map((c) => ({ name: c.name, def: columnSql(c) }));
+}
+
+function tableSql(t: TableSpec): string {
+  const cols = allCols(t);
 
   const lines = cols.map(columnSql);
 

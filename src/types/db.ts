@@ -88,14 +88,26 @@ export interface DatabaseRow {
   updated_at: string;
 }
 
+export type SyncStatus = "queued" | "running" | "success" | "failed" | "canceled";
+export type SyncTrigger = "manual" | "auto" | "startup";
+
 export interface DbTable {
   id: number;
   database_id: number;
   name: string;
+  schema_name: string | null;
+  table_type: string | null;
   engine: string | null;
   row_count: number;
   size_bytes: number;
+  data_size_bytes: number;
+  index_size_bytes: number;
+  data_free_bytes: number;
   index_count: number;
+  column_count: number;
+  auto_increment: number | null;
+  collation: string | null;
+  table_comment: string | null;
   description: string | null;
   last_sync_at: string | null;
   created_at: string;
@@ -107,11 +119,61 @@ export interface DbColumn {
   db_table_id: number;
   name: string;
   data_type: string | null;
+  column_type: string | null;
+  default_value: string | null;
   is_nullable: number;
   is_primary_key: number;
+  is_unique: number;
   is_indexed: number;
+  char_max_length: number | null;
+  numeric_precision: number | null;
+  numeric_scale: number | null;
+  column_key: string | null;
+  extra: string | null;
+  collation: string | null;
   ordinal: number | null;
+  comment: string | null;
   description: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DbIndex {
+  id: number;
+  db_table_id: number;
+  database_id: number;
+  name: string;
+  is_unique: number;
+  is_primary: number;
+  index_type: string | null;
+  /** JSON-encoded ordered list of { name, sub_part, collation }. */
+  columns: string | null;
+  column_count: number;
+  cardinality: number | null;
+  size_bytes: number;
+  comment: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DbSyncJob {
+  id: number;
+  database_id: number;
+  status: SyncStatus;
+  phase: string | null;
+  progress: number;
+  tables_total: number;
+  tables_done: number;
+  engine: string | null;
+  engine_version: string | null;
+  table_count: number | null;
+  total_size_bytes: number | null;
+  error: string | null;
+  trigger: SyncTrigger;
+  requested_by: number | null;
+  started_at: string | null;
+  finished_at: string | null;
+  duration_ms: number | null;
   created_at: string;
   updated_at: string;
 }

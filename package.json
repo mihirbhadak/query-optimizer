@@ -11,7 +11,8 @@
     "test:db": "tsx src/lib/mysql-runner/test-run.ts",
     "test:internal-db": "tsx src/lib/db/test-db.ts",
     "test:auth": "tsx src/lib/auth/test-auth.ts",
-    "db:build": "tsx src/lib/db/build-schema.ts"
+    "db:build": "tsx src/lib/db/build-schema.ts",
+    "db:migrate": "tsx src/lib/db/migrate.ts"
   },
   "dependencies": {
     "better-sqlite3": "^12.10.1",

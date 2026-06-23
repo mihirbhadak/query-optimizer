@@ -139,15 +139,24 @@ BEGIN
   UPDATE databases SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
 END;
 
--- Synced table metadata for a database (no customer data).
+-- Synced table metadata for a database (structure only, no customer data).
 CREATE TABLE IF NOT EXISTS db_tables (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   database_id INTEGER NOT NULL,
   name TEXT NOT NULL,
+  schema_name TEXT,
+  table_type TEXT,
   engine TEXT,
   row_count INTEGER DEFAULT 0,
   size_bytes INTEGER DEFAULT 0,
+  data_size_bytes INTEGER DEFAULT 0,
+  index_size_bytes INTEGER DEFAULT 0,
+  data_free_bytes INTEGER DEFAULT 0,
   index_count INTEGER DEFAULT 0,
+  column_count INTEGER DEFAULT 0,
+  auto_increment INTEGER,
+  collation TEXT,
+  table_comment TEXT,
   description TEXT,
   last_sync_at TEXT,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -169,10 +178,20 @@ CREATE TABLE IF NOT EXISTS db_columns (
   db_table_id INTEGER NOT NULL,
   name TEXT NOT NULL,
   data_type TEXT,
+  column_type TEXT,
+  default_value TEXT,
   is_nullable INTEGER DEFAULT 1 CHECK (is_nullable IN (0, 1)),
   is_primary_key INTEGER DEFAULT 0 CHECK (is_primary_key IN (0, 1)),
+  is_unique INTEGER DEFAULT 0 CHECK (is_unique IN (0, 1)),
   is_indexed INTEGER DEFAULT 0 CHECK (is_indexed IN (0, 1)),
+  char_max_length INTEGER,
+  numeric_precision INTEGER,
+  numeric_scale INTEGER,
+  column_key TEXT,
+  extra TEXT,
+  collation TEXT,
   ordinal INTEGER,
+  comment TEXT,
   description TEXT,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -185,6 +204,69 @@ AFTER UPDATE ON db_columns
 FOR EACH ROW
 BEGIN
   UPDATE db_columns SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+END;
+
+-- Synced index metadata for a table (with per-index size when available).
+CREATE TABLE IF NOT EXISTS db_indexes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  db_table_id INTEGER NOT NULL,
+  database_id INTEGER NOT NULL,
+  name TEXT NOT NULL,
+  is_unique INTEGER DEFAULT 0 CHECK (is_unique IN (0, 1)),
+  is_primary INTEGER DEFAULT 0 CHECK (is_primary IN (0, 1)),
+  index_type TEXT,
+  columns JSON CHECK (columns IS NULL OR json_valid(columns)),
+  column_count INTEGER DEFAULT 0,
+  cardinality INTEGER,
+  size_bytes INTEGER DEFAULT 0,
+  comment TEXT,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (db_table_id, name),
+  FOREIGN KEY (db_table_id) REFERENCES db_tables(id) ON DELETE CASCADE,
+  FOREIGN KEY (database_id) REFERENCES databases(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS ix_db_indexes_db_table_id ON db_indexes (db_table_id);
+CREATE INDEX IF NOT EXISTS ix_db_indexes_database_id ON db_indexes (database_id);
+CREATE TRIGGER IF NOT EXISTS trg_db_indexes_updated_at
+AFTER UPDATE ON db_indexes
+FOR EACH ROW
+BEGIN
+  UPDATE db_indexes SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+END;
+
+-- Schema-introspection runs: queue, progress, timing, and per-run metadata.
+CREATE TABLE IF NOT EXISTS db_sync_jobs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  database_id INTEGER NOT NULL,
+  status TEXT NOT NULL DEFAULT 'queued' CHECK (status IN ('queued', 'running', 'success', 'failed', 'canceled')),
+  phase TEXT,
+  progress INTEGER DEFAULT 0,
+  tables_total INTEGER DEFAULT 0,
+  tables_done INTEGER DEFAULT 0,
+  engine TEXT,
+  engine_version TEXT,
+  table_count INTEGER,
+  total_size_bytes INTEGER,
+  error TEXT,
+  trigger TEXT NOT NULL DEFAULT 'manual' CHECK (trigger IN ('manual', 'auto', 'startup')),
+  requested_by INTEGER,
+  started_at TEXT,
+  finished_at TEXT,
+  duration_ms INTEGER,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (database_id) REFERENCES databases(id) ON DELETE CASCADE,
+  FOREIGN KEY (requested_by) REFERENCES users(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS ix_db_sync_jobs_database_id ON db_sync_jobs (database_id);
+CREATE INDEX IF NOT EXISTS ix_db_sync_jobs_status ON db_sync_jobs (status);
+CREATE INDEX IF NOT EXISTS ix_db_sync_jobs_created_at ON db_sync_jobs (created_at);
+CREATE TRIGGER IF NOT EXISTS trg_db_sync_jobs_updated_at
+AFTER UPDATE ON db_sync_jobs
+FOR EACH ROW
+BEGIN
+  UPDATE db_sync_jobs SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
 END;
 
 -- Business context for the AI, scoped at several levels.

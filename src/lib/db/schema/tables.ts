@@ -26,6 +26,8 @@ const SUGGESTION_TYPES = [
 const SUGGESTION_STATUS = ["pending", "approved", "rejected", "implemented"] as const;
 const RULE_ACTIONS = ["allow", "block"] as const;
 const LOG_LEVELS = ["debug", "info", "warn", "error"] as const;
+const SYNC_STATUS = ["queued", "running", "success", "failed", "canceled"] as const;
+const SYNC_TRIGGERS = ["manual", "auto", "startup"] as const;
 
 export const tables: TableSpec[] = [
   // ---------------------------------------------------------------- users
@@ -147,16 +149,27 @@ export const tables: TableSpec[] = [
   // ----------------------------------------------------------- db_tables
   {
     name: "db_tables",
-    comment: "Synced table metadata for a database (no customer data).",
+    comment: "Synced table metadata for a database (structure only, no customer data).",
     timestamps: true,
     cols: [
       pk(),
       fk("database_id", "databases"),
       text("name", { notNull: true }),
+      text("schema_name"),
+      text("table_type"),
+      // Storage engine (InnoDB/MyISAM/...) — distinct from the connection's db engine.
       text("engine"),
+      // Estimated row count from the dictionary (information_schema) — never COUNT(*).
       int("row_count", { default: "0" }),
-      int("size_bytes", { default: "0" }),
+      int("size_bytes", { default: "0" }), // total = data + index
+      int("data_size_bytes", { default: "0" }),
+      int("index_size_bytes", { default: "0" }),
+      int("data_free_bytes", { default: "0" }),
       int("index_count", { default: "0" }),
+      int("column_count", { default: "0" }),
+      int("auto_increment"),
+      text("collation"),
+      text("table_comment"),
       text("description"),
       ts("last_sync_at"),
     ],
@@ -173,15 +186,78 @@ export const tables: TableSpec[] = [
       pk(),
       fk("db_table_id", "db_tables"),
       text("name", { notNull: true }),
+      // data_type = base type (e.g. "varchar"); column_type = full (e.g. "varchar(255)").
       text("data_type"),
+      text("column_type"),
+      text("default_value"),
       bool("is_nullable", { default: "1" }),
       bool("is_primary_key", { default: "0" }),
+      bool("is_unique", { default: "0" }),
       bool("is_indexed", { default: "0" }),
+      int("char_max_length"),
+      int("numeric_precision"),
+      int("numeric_scale"),
+      text("column_key"),
+      text("extra"),
+      text("collation"),
       int("ordinal"),
+      text("comment"),
       text("description"),
     ],
     unique: [["db_table_id", "name"]],
     indexes: [{ cols: ["db_table_id"] }],
+  },
+
+  // ---------------------------------------------------------- db_indexes
+  {
+    name: "db_indexes",
+    comment: "Synced index metadata for a table (with per-index size when available).",
+    timestamps: true,
+    cols: [
+      pk(),
+      fk("db_table_id", "db_tables"),
+      // Denormalized for easy per-database querying by the AI optimizer.
+      fk("database_id", "databases"),
+      text("name", { notNull: true }),
+      bool("is_unique", { default: "0" }),
+      bool("is_primary", { default: "0" }),
+      text("index_type"),
+      // Ordered list of { name, sub_part, collation }.
+      json("columns"),
+      int("column_count", { default: "0" }),
+      int("cardinality"),
+      int("size_bytes", { default: "0" }),
+      text("comment"),
+    ],
+    unique: [["db_table_id", "name"]],
+    indexes: [{ cols: ["db_table_id"] }, { cols: ["database_id"] }],
+  },
+
+  // -------------------------------------------------------- db_sync_jobs
+  {
+    name: "db_sync_jobs",
+    comment: "Schema-introspection runs: queue, progress, timing, and per-run metadata.",
+    timestamps: true,
+    cols: [
+      pk(),
+      fk("database_id", "databases"),
+      enumText("status", SYNC_STATUS, { notNull: true, default: "'queued'" }),
+      text("phase"),
+      int("progress", { default: "0" }),
+      int("tables_total", { default: "0" }),
+      int("tables_done", { default: "0" }),
+      text("engine"),
+      text("engine_version"),
+      int("table_count"),
+      int("total_size_bytes"),
+      text("error"),
+      enumText("trigger", SYNC_TRIGGERS, { notNull: true, default: "'manual'" }),
+      fk("requested_by", "users", { onDelete: "set null", notNull: false }),
+      ts("started_at"),
+      ts("finished_at"),
+      int("duration_ms"),
+    ],
+    indexes: [{ cols: ["database_id"] }, { cols: ["status"] }, { cols: ["created_at"] }],
   },
 
   // -------------------------------------------------------- instructions
