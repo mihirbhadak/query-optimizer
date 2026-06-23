@@ -96,6 +96,51 @@ export const databasesRepository = {
     return row ? toSafe(row) : undefined;
   },
 
+  getByName(workspaceId: number, name: string): SafeDatabase | undefined {
+    const row = db
+      .prepare("SELECT * FROM databases WHERE workspace_id = ? AND name = ?")
+      .get(workspaceId, name) as DatabaseRow | undefined;
+    return row ? toSafe(row) : undefined;
+  },
+
+  /**
+   * Patch a connection. Non-secret columns are set when provided; secret fields
+   * (`password`, `ssh*`) are re-encrypted only when a new plaintext value is
+   * given — pass them undefined to keep the existing secret.
+   */
+  update(id: number, input: Partial<DatabaseInput>): SafeDatabase | undefined {
+    const u: Record<string, unknown> = {};
+    const cols: [keyof DatabaseInput, string][] = [
+      ["name", "name"],
+      ["engine", "engine"],
+      ["host", "host"],
+      ["port", "port"],
+      ["username", "username"],
+      ["dbName", "db_name"],
+      ["sslMode", "ssl_mode"],
+      ["connectionMethod", "connection_method"],
+      ["sshHost", "ssh_host"],
+      ["sshPort", "ssh_port"],
+      ["sshUsername", "ssh_username"],
+      ["sshAuthMethod", "ssh_auth_method"],
+    ];
+    for (const [k, col] of cols) if (input[k] !== undefined) u[col] = input[k];
+    if (input.password !== undefined) u.password_enc = encryptOptional(input.password);
+    if (input.sshPassword !== undefined) u.ssh_password_enc = encryptOptional(input.sshPassword);
+    if (input.sshPrivateKey !== undefined) u.ssh_private_key_enc = encryptOptional(input.sshPrivateKey);
+    if (input.sshPassphrase !== undefined) u.ssh_passphrase_enc = encryptOptional(input.sshPassphrase);
+
+    const entries = Object.entries(u);
+    if (entries.length > 0) {
+      const set = entries.map(([k]) => `${k} = @${k}`).join(", ");
+      db.prepare(`UPDATE databases SET ${set}, updated_at = CURRENT_TIMESTAMP WHERE id = @id`).run({
+        ...Object.fromEntries(entries),
+        id,
+      });
+    }
+    return this.getSafe(id);
+  },
+
   list(workspaceId: number): SafeDatabase[] {
     return (
       db.prepare("SELECT * FROM databases WHERE workspace_id = ? ORDER BY name").all(workspaceId) as
