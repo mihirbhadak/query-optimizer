@@ -12,6 +12,7 @@ import {
   Lightbulb,
   LogOut,
   MessageSquare,
+  Plus,
   ScrollText,
   ServerCog,
   Settings,
@@ -22,6 +23,7 @@ import {
 
 import { logoutAction } from "@/lib/auth/actions";
 import type { SafeUser } from "@/lib/users";
+import { CreateWorkspaceDialog } from "@/app/admin/workspaces/CreateWorkspaceDialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Collapsible,
@@ -42,6 +44,7 @@ import {
   SidebarGroup,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarMenuSub,
@@ -50,51 +53,19 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 
-interface NavNode {
-  title: string;
-  href?: string;
-  icon?: LucideIcon;
-  defaultOpen?: boolean;
-  children?: NavNode[];
+export interface SidebarWorkspace {
+  id: number;
+  slug: string;
+  name: string;
 }
 
-// Nested items without a real route yet (#) get wired up with the workspace flow.
-const NAV: NavNode[] = [
-  { title: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
-  {
-    title: "Workspaces",
-    href: "/admin/workspaces",
-    icon: Building2,
-    defaultOpen: true,
-    children: [
-      { title: "Instructions", href: "#" },
-      { title: "Query Rules", href: "#" },
-      {
-        title: "Databases",
-        href: "#",
-        defaultOpen: true,
-        children: [
-          { title: "Instructions", href: "#" },
-          { title: "Metadata", href: "#" },
-          { title: "Query Rules", href: "#" },
-          {
-            title: "Tables",
-            href: "#",
-            defaultOpen: true,
-            children: [
-              { title: "Instructions", href: "#" },
-              { title: "Columns", href: "#" },
-              { title: "Indexes", href: "#" },
-              { title: "Triggers", href: "#" },
-              { title: "Procedures", href: "#" },
-              { title: "Functions", href: "#" },
-              { title: "Events", href: "#" },
-            ],
-          },
-        ],
-      },
-    ],
-  },
+interface NavItem {
+  title: string;
+  href: string;
+  icon: LucideIcon;
+}
+
+const NAV: NavItem[] = [
   { title: "Users", href: "/admin/users", icon: Users },
   { title: "Roles", href: "/admin/roles", icon: Shield },
   { title: "Agents", href: "/admin/agents", icon: Bot },
@@ -105,69 +76,21 @@ const NAV: NavNode[] = [
   { title: "Settings", href: "/admin/settings", icon: Settings },
 ];
 
-function useIsActive() {
-  const pathname = usePathname();
-  return (href?: string) =>
-    !!href && href !== "#" && (pathname === href || pathname.startsWith(`${href}/`));
-}
-
-function NavTree({ items, depth }: { items: NavNode[]; depth: number }) {
-  const isActive = useIsActive();
-  return (
-    <>
-      {items.map((item) => {
-        const hasChildren = !!item.children?.length;
-        const Item = depth === 0 ? SidebarMenuItem : SidebarMenuSubItem;
-        const Button = depth === 0 ? SidebarMenuButton : SidebarMenuSubButton;
-
-        if (!hasChildren) {
-          return (
-            <Item key={`${depth}-${item.title}`}>
-              <Button asChild isActive={isActive(item.href)}>
-                <Link href={item.href ?? "#"}>
-                  {depth === 0 && item.icon ? <item.icon /> : null}
-                  <span>{item.title}</span>
-                </Link>
-              </Button>
-            </Item>
-          );
-        }
-
-        return (
-          <Collapsible
-            key={`${depth}-${item.title}`}
-            asChild
-            defaultOpen={item.defaultOpen}
-            className="group/collapsible"
-          >
-            <Item>
-              <CollapsibleTrigger asChild>
-                <Button>
-                  {depth === 0 && item.icon ? <item.icon /> : null}
-                  <span>{item.title}</span>
-                  <ChevronRight className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-90" />
-                </Button>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <SidebarMenuSub>
-                  <NavTree items={item.children!} depth={depth + 1} />
-                </SidebarMenuSub>
-              </CollapsibleContent>
-            </Item>
-          </Collapsible>
-        );
-      })}
-    </>
-  );
-}
-
 function initials(user: SafeUser): string {
   const fromName = `${user.first_name ?? ""}${user.last_name ?? ""}`.trim();
-  const source = fromName || user.username;
-  return source.slice(0, 2).toUpperCase();
+  return (fromName || user.username).slice(0, 2).toUpperCase();
 }
 
-export function AppSidebar({ user }: { user: SafeUser }) {
+export function AppSidebar({
+  user,
+  workspaces,
+}: {
+  user: SafeUser;
+  workspaces: SidebarWorkspace[];
+}) {
+  const pathname = usePathname();
+  const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
@@ -191,7 +114,82 @@ export function AppSidebar({ user }: { user: SafeUser }) {
       <SidebarContent>
         <SidebarGroup>
           <SidebarMenu>
-            <NavTree items={NAV} depth={0} />
+            {/* Dashboard */}
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={pathname === "/admin/dashboard"}
+                tooltip="Dashboard"
+              >
+                <Link href="/admin/dashboard">
+                  <LayoutDashboard />
+                  <span>Dashboard</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+
+            {/* Workspaces: collapsible — label navigates, chevron toggles */}
+            <Collapsible asChild defaultOpen className="group/collapsible">
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={isActive("/admin/workspaces")}
+                  tooltip="Workspaces"
+                >
+                  <Link href="/admin/workspaces">
+                    <Building2 />
+                    <span>Workspaces</span>
+                  </Link>
+                </SidebarMenuButton>
+                <CollapsibleTrigger asChild>
+                  <SidebarMenuAction className="transition-transform data-[state=open]:rotate-90">
+                    <ChevronRight />
+                    <span className="sr-only">Toggle workspaces</span>
+                  </SidebarMenuAction>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <SidebarMenuSub>
+                    {workspaces.map((ws) => (
+                      <SidebarMenuSubItem key={ws.id}>
+                        <SidebarMenuSubButton
+                          asChild
+                          isActive={isActive(`/admin/workspaces/${ws.slug}`)}
+                        >
+                          <Link href={`/admin/workspaces/${ws.slug}`}>
+                            <span className="truncate">{ws.name}</span>
+                          </Link>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                    ))}
+                    <SidebarMenuSubItem>
+                      <CreateWorkspaceDialog
+                        trigger={
+                          <button
+                            type="button"
+                            className="flex h-7 w-full items-center gap-2 rounded-md px-2 text-sm text-sidebar-foreground/70 outline-none transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                          >
+                            <Plus className="size-4" />
+                            New workspace
+                          </button>
+                        }
+                      />
+                    </SidebarMenuSubItem>
+                  </SidebarMenuSub>
+                </CollapsibleContent>
+              </SidebarMenuItem>
+            </Collapsible>
+
+            {/* Remaining sections */}
+            {NAV.map((item) => (
+              <SidebarMenuItem key={item.href}>
+                <SidebarMenuButton asChild isActive={isActive(item.href)} tooltip={item.title}>
+                  <Link href={item.href}>
+                    <item.icon />
+                    <span>{item.title}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
