@@ -45,6 +45,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# local working notes / future-task list (not part of the repo)
+/TODO.md
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

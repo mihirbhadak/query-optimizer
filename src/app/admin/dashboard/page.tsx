@@ -2,6 +2,7 @@ import { requireAdmin } from "@/lib/auth/dal";
 import { settingsService } from "@/lib/settings";
 import { userService, userLogService } from "@/lib/users";
 import { workspacesRepository } from "@/lib/db";
+import { ActiveSyncs } from "@/components/admin/active-syncs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -127,6 +128,9 @@ export default async function AdminDashboardPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Live schema-sync activity */}
+        <ActiveSyncs />
       </div>
     </div>
   );
