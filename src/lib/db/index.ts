@@ -31,6 +31,9 @@ export {
   systemLogsRepository,
   type UserLogEntry,
   type SystemLogEntry,
+  type UserLogWithUser,
+  type UserLogQuery,
+  type SystemLogQuery,
 } from "./repositories/logs";
 export { settingsRepository } from "./repositories/settings";
 export {

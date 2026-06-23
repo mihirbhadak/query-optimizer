@@ -18,6 +18,67 @@ export interface SystemLogEntry {
   metadata?: Record<string, unknown>;
 }
 
+/** A user-log row joined with the actor's username/email (for display). */
+export interface UserLogWithUser extends UserLog {
+  username: string | null;
+  email: string | null;
+}
+
+export interface UserLogQuery {
+  search?: string;
+  action?: string;
+  userId?: number;
+  workspaceId?: number;
+  /** Inclusive date bounds, "YYYY-MM-DD". */
+  from?: string;
+  to?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface SystemLogQuery {
+  search?: string;
+  level?: LogLevel;
+  source?: string;
+  from?: string;
+  to?: string;
+  limit?: number;
+  offset?: number;
+}
+
+function userWhere(q: UserLogQuery): { sql: string; params: unknown[] } {
+  const cond: string[] = [];
+  const params: unknown[] = [];
+  if (q.action) {
+    cond.push("l.action = ?");
+    params.push(q.action);
+  }
+  if (q.userId != null) {
+    cond.push("l.user_id = ?");
+    params.push(q.userId);
+  }
+  if (q.workspaceId != null) {
+    cond.push("l.workspace_id = ?");
+    params.push(q.workspaceId);
+  }
+  if (q.from) {
+    cond.push("l.created_at >= ?");
+    params.push(q.from);
+  }
+  if (q.to) {
+    cond.push("l.created_at <= ?");
+    params.push(`${q.to} 23:59:59`);
+  }
+  if (q.search) {
+    const s = `%${q.search}%`;
+    cond.push(
+      "(l.action LIKE ? OR l.target_type LIKE ? OR l.target_id LIKE ? OR l.metadata LIKE ? OR u.username LIKE ?)",
+    );
+    params.push(s, s, s, s, s);
+  }
+  return { sql: cond.length ? `WHERE ${cond.join(" AND ")}` : "", params };
+}
+
 /** Append-only audit of user actions (architecture rule: audit every action). */
 export const userLogsRepository = {
   record(e: UserLogEntry): UserLog {
@@ -53,7 +114,79 @@ export const userLogsRepository = {
   recent(limit = 100): UserLog[] {
     return db.prepare("SELECT * FROM user_logs ORDER BY id DESC LIMIT ?").all(limit) as UserLog[];
   },
+
+  /** Filtered + paginated audit entries, joined with the actor's username. */
+  query(q: UserLogQuery): UserLogWithUser[] {
+    const { sql, params } = userWhere(q);
+    return db
+      .prepare(
+        `SELECT l.*, u.username AS username, u.email AS email
+           FROM user_logs l LEFT JOIN users u ON u.id = l.user_id
+           ${sql}
+          ORDER BY l.id DESC LIMIT ? OFFSET ?`,
+      )
+      .all(...params, q.limit ?? 50, q.offset ?? 0) as UserLogWithUser[];
+  },
+
+  count(q: UserLogQuery): number {
+    const { sql, params } = userWhere(q);
+    const row = db
+      .prepare(
+        `SELECT COUNT(*) AS n FROM user_logs l LEFT JOIN users u ON u.id = l.user_id ${sql}`,
+      )
+      .get(...params) as { n: number };
+    return row.n;
+  },
+
+  distinctActions(): string[] {
+    return (db.prepare("SELECT DISTINCT action FROM user_logs ORDER BY action").all() as { action: string }[]).map(
+      (r) => r.action,
+    );
+  },
+
+  total(): number {
+    return (db.prepare("SELECT COUNT(*) AS n FROM user_logs").get() as { n: number }).n;
+  },
+
+  deleteAll(): number {
+    return db.prepare("DELETE FROM user_logs").run().changes;
+  },
+
+  /** Delete entries older than `days` (UTC). No-op when days <= 0. */
+  deleteOlderThan(days: number): number {
+    if (days <= 0) return 0;
+    return db
+      .prepare("DELETE FROM user_logs WHERE created_at < datetime('now', ?)")
+      .run(`-${Math.floor(days)} days`).changes;
+  },
 };
+
+function systemWhere(q: SystemLogQuery): { sql: string; params: unknown[] } {
+  const cond: string[] = [];
+  const params: unknown[] = [];
+  if (q.level) {
+    cond.push("level = ?");
+    params.push(q.level);
+  }
+  if (q.source) {
+    cond.push("source = ?");
+    params.push(q.source);
+  }
+  if (q.from) {
+    cond.push("created_at >= ?");
+    params.push(q.from);
+  }
+  if (q.to) {
+    cond.push("created_at <= ?");
+    params.push(`${q.to} 23:59:59`);
+  }
+  if (q.search) {
+    const s = `%${q.search}%`;
+    cond.push("(message LIKE ? OR source LIKE ? OR metadata LIKE ?)");
+    params.push(s, s, s);
+  }
+  return { sql: cond.length ? `WHERE ${cond.join(" AND ")}` : "", params };
+}
 
 /** Append-only system events / errors. */
 export const systemLogsRepository = {
@@ -76,5 +209,42 @@ export const systemLogsRepository = {
 
   recent(limit = 100): SystemLog[] {
     return db.prepare("SELECT * FROM system_logs ORDER BY id DESC LIMIT ?").all(limit) as SystemLog[];
+  },
+
+  query(q: SystemLogQuery): SystemLog[] {
+    const { sql, params } = systemWhere(q);
+    return db
+      .prepare(`SELECT * FROM system_logs ${sql} ORDER BY id DESC LIMIT ? OFFSET ?`)
+      .all(...params, q.limit ?? 50, q.offset ?? 0) as SystemLog[];
+  },
+
+  count(q: SystemLogQuery): number {
+    const { sql, params } = systemWhere(q);
+    const row = db.prepare(`SELECT COUNT(*) AS n FROM system_logs ${sql}`).get(...params) as { n: number };
+    return row.n;
+  },
+
+  distinctSources(): string[] {
+    return (
+      db
+        .prepare("SELECT DISTINCT source FROM system_logs WHERE source IS NOT NULL ORDER BY source")
+        .all() as { source: string }[]
+    ).map((r) => r.source);
+  },
+
+  total(): number {
+    return (db.prepare("SELECT COUNT(*) AS n FROM system_logs").get() as { n: number }).n;
+  },
+
+  deleteAll(): number {
+    return db.prepare("DELETE FROM system_logs").run().changes;
+  },
+
+  /** Delete entries older than `days` (UTC). No-op when days <= 0. */
+  deleteOlderThan(days: number): number {
+    if (days <= 0) return 0;
+    return db
+      .prepare("DELETE FROM system_logs WHERE created_at < datetime('now', ?)")
+      .run(`-${Math.floor(days)} days`).changes;
   },
 };
