@@ -43,6 +43,17 @@ export interface Workspace {
   updated_at: string;
 }
 
+export type WorkspaceRole = "owner" | "admin" | "member" | "viewer";
+
+export interface WorkspaceMember {
+  id: number;
+  workspace_id: number;
+  user_id: number;
+  role: WorkspaceRole;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface UserRole {
   id: number;
   user_id: number;

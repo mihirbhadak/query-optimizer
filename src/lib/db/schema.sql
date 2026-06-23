@@ -64,6 +64,27 @@ BEGIN
   UPDATE workspaces SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
 END;
 
+-- Per-workspace user authorization (which users may access a workspace + role).
+CREATE TABLE IF NOT EXISTS workspace_members (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  workspace_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL,
+  role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('owner', 'admin', 'member', 'viewer')),
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (workspace_id, user_id),
+  FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS ix_workspace_members_workspace_id ON workspace_members (workspace_id);
+CREATE INDEX IF NOT EXISTS ix_workspace_members_user_id ON workspace_members (user_id);
+CREATE TRIGGER IF NOT EXISTS trg_workspace_members_updated_at
+AFTER UPDATE ON workspace_members
+FOR EACH ROW
+BEGIN
+  UPDATE workspace_members SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+END;
+
 -- Assigns a role to a user, with optional per-assignment overrides.
 CREATE TABLE IF NOT EXISTS user_roles (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

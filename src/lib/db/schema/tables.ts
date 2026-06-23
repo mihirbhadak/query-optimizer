@@ -13,6 +13,7 @@ const DB_ENGINES = ["mysql", "mariadb"] as const;
 const SSL_MODES = ["disabled", "require", "require_no_verify"] as const;
 const CONN_METHODS = ["direct", "ssh"] as const;
 const SSH_AUTH = ["password", "privateKey"] as const;
+const WORKSPACE_ROLES = ["owner", "admin", "member", "viewer"] as const;
 const INSTRUCTION_SCOPES = ["workspace", "database", "table", "column"] as const;
 const AI_PROVIDERS = ["openai", "claude", "gemini", "openrouter"] as const;
 const SUGGESTION_TYPES = [
@@ -80,6 +81,21 @@ export const tables: TableSpec[] = [
       text("slug", { notNull: true, unique: true }),
       text("description"),
     ],
+  },
+
+  // ------------------------------------------------------ workspace_members
+  {
+    name: "workspace_members",
+    comment: "Per-workspace user authorization (which users may access a workspace + role).",
+    timestamps: true,
+    cols: [
+      pk(),
+      fk("workspace_id", "workspaces"),
+      fk("user_id", "users"),
+      enumText("role", WORKSPACE_ROLES, { notNull: true, default: "'member'" }),
+    ],
+    unique: [["workspace_id", "user_id"]],
+    indexes: [{ cols: ["workspace_id"] }, { cols: ["user_id"] }],
   },
 
   // --------------------------------------------------------- user_roles

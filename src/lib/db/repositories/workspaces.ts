@@ -25,6 +25,21 @@ export const workspacesRepository = {
     return db.prepare("SELECT * FROM workspaces ORDER BY name").all() as Workspace[];
   },
 
+  update(
+    id: number,
+    patch: Partial<Pick<Workspace, "name" | "slug" | "description">>,
+  ): Workspace | undefined {
+    const entries = Object.entries(patch).filter(([, v]) => v !== undefined);
+    if (entries.length > 0) {
+      const set = entries.map(([k]) => `${k} = @${k}`).join(", ");
+      db.prepare(`UPDATE workspaces SET ${set} WHERE id = @id`).run({
+        ...Object.fromEntries(entries),
+        id,
+      });
+    }
+    return this.getById(id);
+  },
+
   delete(id: number): void {
     db.prepare("DELETE FROM workspaces WHERE id = ?").run(id);
   },

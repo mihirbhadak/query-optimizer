@@ -15,6 +15,10 @@ export { db, closeDb, applySchema, type Sqlite } from "./client";
 export { encryptSecret, decryptSecret, hasEncryptionKey } from "./crypto";
 
 export { workspacesRepository } from "./repositories/workspaces";
+export {
+  workspaceMembersRepository,
+  type WorkspaceMemberWithUser,
+} from "./repositories/workspace-members";
 export { usersRepository, type UserInput } from "./repositories/users";
 export { rolesRepository, userRolesRepository } from "./repositories/roles";
 export {
