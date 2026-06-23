@@ -152,6 +152,11 @@ export const databasesRepository = {
     db.prepare("DELETE FROM databases WHERE id = ?").run(id);
   },
 
+  /** Stamp last_sync_at after a successful schema sync. */
+  markSynced(id: number): void {
+    db.prepare("UPDATE databases SET last_sync_at = CURRENT_TIMESTAMP WHERE id = ?").run(id);
+  },
+
   /**
    * Decrypt stored secrets and build options for the mysql-runner
    * (`runQuery`/`ensureConnection`). The bridge from stored config to a live pool.

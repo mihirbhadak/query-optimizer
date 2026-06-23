@@ -33,3 +33,17 @@ export {
   type SystemLogEntry,
 } from "./repositories/logs";
 export { settingsRepository } from "./repositories/settings";
+export {
+  introspectionRepository,
+  type TableMetaInput,
+  type ColumnMetaInput,
+  type IndexMetaInput,
+  type SchemaSummary,
+  type TableWithChildren,
+} from "./repositories/introspection";
+export {
+  syncJobsRepository,
+  nowTs,
+  type SyncJobPatch,
+  type SyncJobDetailed,
+} from "./repositories/sync-jobs";
