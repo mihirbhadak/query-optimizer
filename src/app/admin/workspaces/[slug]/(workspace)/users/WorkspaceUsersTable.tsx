@@ -25,7 +25,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-import { removeMembers, setMembersRole } from "../../actions";
+import { removeMembers, setMembersRole } from "../../../actions";
 
 export interface UserRow {
   id: number;

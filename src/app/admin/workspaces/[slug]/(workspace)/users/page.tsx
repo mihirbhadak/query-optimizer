@@ -1,3 +1,5 @@
+import { notFound } from "next/navigation";
+
 import { requireAdmin } from "@/lib/auth/dal";
 import { userService } from "@/lib/users";
 import { workspaceService } from "@/lib/workspaces";
@@ -10,7 +12,7 @@ export default async function UsersTab({ params }: { params: Promise<{ slug: str
   const admin = await requireAdmin();
   const { slug } = await params;
   const ws = workspaceService.getBySlug(slug);
-  if (!ws) return null;
+  if (!ws) notFound();
   const wsId = ws.id;
 
   const roleByUser = new Map(workspaceService.members(wsId).map((m) => [m.user_id, m.role]));

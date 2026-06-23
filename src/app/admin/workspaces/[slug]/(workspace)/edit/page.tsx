@@ -1,9 +1,11 @@
+import { notFound } from "next/navigation";
+
 import { requireAdmin } from "@/lib/auth/dal";
 import { workspaceService } from "@/lib/workspaces";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
-import { DeleteWorkspaceDialog } from "../../DeleteWorkspaceDialog";
-import { WorkspaceSettingsForm } from "../../WorkspaceSettingsForm";
+import { DeleteWorkspaceDialog } from "../../../DeleteWorkspaceDialog";
+import { WorkspaceSettingsForm } from "../../../WorkspaceSettingsForm";
 
 export const metadata = { title: "Workspace · Edit" };
 
@@ -11,7 +13,7 @@ export default async function EditTab({ params }: { params: Promise<{ slug: stri
   await requireAdmin();
   const { slug } = await params;
   const ws = workspaceService.getBySlug(slug);
-  if (!ws) return null;
+  if (!ws) notFound();
 
   return (
     <div className="space-y-6">

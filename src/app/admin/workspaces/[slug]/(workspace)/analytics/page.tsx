@@ -1,3 +1,5 @@
+import { notFound } from "next/navigation";
+
 import { requireAdmin } from "@/lib/auth/dal";
 import { workspaceService } from "@/lib/workspaces";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,7 +19,7 @@ export default async function AnalyticsTab({ params }: { params: Promise<{ slug:
   await requireAdmin();
   const { slug } = await params;
   const ws = workspaceService.getBySlug(slug);
-  if (!ws) return null;
+  if (!ws) notFound();
   const memberCount = workspaceService.memberCount(ws.id);
 
   return (
