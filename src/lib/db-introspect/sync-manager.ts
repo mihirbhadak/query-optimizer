@@ -18,6 +18,7 @@ import {
   nowTs,
   syncJobsRepository,
 } from "@/lib/db";
+import { systemLogService } from "@/lib/logs";
 import type { DbSyncJob, SyncTrigger } from "@/types/db";
 
 import { getAdapter } from "./adapters";
@@ -167,6 +168,7 @@ class SyncManager {
       introspectionRepository.replaceSchema(databaseId, result.tables);
       databasesRepository.markSynced(databaseId);
 
+      const durationMs = Date.now() - state.startedAtMs;
       syncJobsRepository.update(jobId, {
         status: "success",
         phase: "done",
@@ -178,14 +180,29 @@ class SyncManager {
         tables_total: result.tables.length,
         tables_done: result.tables.length,
         finished_at: nowTs(),
-        duration_ms: Date.now() - state.startedAtMs,
+        duration_ms: durationMs,
+      });
+      systemLogService.info("Schema sync completed", {
+        source: "sync",
+        metadata: {
+          databaseId,
+          jobId,
+          engine: result.engine,
+          tables: result.tables.length,
+          durationMs,
+        },
       });
     } catch (err) {
+      const message = err instanceof Error ? err.message : "Sync failed.";
       syncJobsRepository.update(jobId, {
         status: "failed",
-        error: err instanceof Error ? err.message : "Sync failed.",
+        error: message,
         finished_at: nowTs(),
         duration_ms: Date.now() - state.startedAtMs,
+      });
+      systemLogService.error("Schema sync failed", {
+        source: "sync",
+        metadata: { databaseId, jobId, error: message },
       });
     } finally {
       await conn?.close();

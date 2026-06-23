@@ -91,7 +91,10 @@ export class DatabaseService {
     }
     userLogService.record("database.create", {
       actorId: actor.actorId,
-      metadata: { workspaceId: input.workspaceId, name: input.name },
+      targetType: "database",
+      targetId: row.id,
+      workspaceId: input.workspaceId,
+      metadata: { name: input.name },
     });
     return row;
   }
@@ -112,7 +115,10 @@ export class DatabaseService {
     if (!row) throw new DatabaseServiceError("Database not found.");
     userLogService.record("database.update", {
       actorId: actor.actorId,
-      metadata: { databaseId: id, name: input.name },
+      targetType: "database",
+      targetId: id,
+      workspaceId: row.workspace_id,
+      metadata: { name: input.name },
     });
     return row;
   }
@@ -122,7 +128,10 @@ export class DatabaseService {
     databasesRepository.delete(id);
     userLogService.record("database.delete", {
       actorId: actor.actorId,
-      metadata: { databaseId: id, name: existing?.name },
+      targetType: "database",
+      targetId: id,
+      workspaceId: existing?.workspace_id,
+      metadata: { name: existing?.name },
     });
   }
 

@@ -193,7 +193,12 @@ export class UserService {
     const user = usersRepository.getById(id);
     if (!user) throw new UserServiceError("User not found.");
     const updated = usersRepository.update(id, { status: "active" });
-    userLogService.record("user.approve", { actorId: actor.actorId, targetId: id });
+    userLogService.record("user.approve", {
+      actorId: actor.actorId,
+      targetId: id,
+      ip: actor.ip,
+      metadata: { username: user.username },
+    });
     return toSafe(updated!);
   }
 
@@ -206,6 +211,7 @@ export class UserService {
     userLogService.record("user.reject", {
       actorId: actor.actorId,
       targetId: id,
+      ip: actor.ip,
       metadata: { username: user.username },
     });
     return toSafe(updated!);

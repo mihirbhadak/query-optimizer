@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 
 import { userService, userLogService, UserServiceError } from "@/lib/users";
 import { settingsService } from "@/lib/settings";
+import { systemLogService } from "@/lib/logs";
+import { clientIp } from "@/lib/http";
 
 import { NO_ADMIN_MESSAGE } from "./constants";
 import { startSession, endSession, readSession } from "./session";
@@ -58,6 +60,10 @@ export async function loginAction(_prev: ActionState, formData: FormData): Promi
 
   const result = userService.verifyCredentials(identifier, password);
   if (!result.ok) {
+    systemLogService.warn("Failed login attempt", {
+      source: "auth",
+      metadata: { identifier, reason: result.reason },
+    });
     if (result.reason === "pending") return { error: "Your account is pending for admin approval." };
     if (result.reason === "rejected") return { error: "Your signup request was rejected." };
     if (result.reason === "deleted") return { error: "This account has been removed." };
@@ -65,7 +71,7 @@ export async function loginAction(_prev: ActionState, formData: FormData): Promi
   }
 
   await startSession(result.user.id);
-  userLogService.record("auth.login", { actorId: result.user.id });
+  userLogService.record("auth.login", { actorId: result.user.id, ip: await clientIp() });
   redirect("/");
 }
 
@@ -94,12 +100,12 @@ export async function signupAction(_prev: ActionState, formData: FormData): Prom
 
   // Approval required: leave the user pending and do NOT start a session.
   if (requiresApproval) {
-    userLogService.record("auth.signup_pending", { actorId: userId });
+    userLogService.record("auth.signup_pending", { actorId: userId, ip: await clientIp() });
     return { notice: "Your account has been created and is pending admin approval." };
   }
 
   await startSession(userId);
-  userLogService.record("auth.signup", { actorId: userId });
+  userLogService.record("auth.signup", { actorId: userId, ip: await clientIp() });
   redirect("/");
 }
 
@@ -120,7 +126,7 @@ export async function setupAction(_prev: ActionState, formData: FormData): Promi
     return toErrorState(err);
   }
   await startSession(userId);
-  userLogService.record("auth.setup_admin", { actorId: userId });
+  userLogService.record("auth.setup_admin", { actorId: userId, ip: await clientIp() });
   redirect("/");
 }
 
@@ -128,6 +134,6 @@ export async function setupAction(_prev: ActionState, formData: FormData): Promi
 export async function logoutAction(): Promise<void> {
   const session = await readSession();
   await endSession();
-  if (session) userLogService.record("auth.logout", { actorId: session.uid });
+  if (session) userLogService.record("auth.logout", { actorId: session.uid, ip: await clientIp() });
   redirect("/login");
 }

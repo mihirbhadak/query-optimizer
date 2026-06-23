@@ -58,7 +58,10 @@ export class WorkspaceService {
     const ws = workspacesRepository.create({ name, slug, description: input.description?.trim() });
     userLogService.record("workspace.create", {
       actorId: actor.actorId,
-      metadata: { workspaceId: ws.id, name, slug },
+      targetType: "workspace",
+      targetId: ws.id,
+      workspaceId: ws.id,
+      metadata: { name, slug },
     });
     return ws;
   }
@@ -80,7 +83,10 @@ export class WorkspaceService {
     })!;
     userLogService.record("workspace.update", {
       actorId: actor.actorId,
-      metadata: { workspaceId: id },
+      targetType: "workspace",
+      targetId: id,
+      workspaceId: id,
+      metadata: { name, slug },
     });
     return ws;
   }
@@ -91,7 +97,10 @@ export class WorkspaceService {
     workspacesRepository.delete(id);
     userLogService.record("workspace.delete", {
       actorId: actor.actorId,
-      metadata: { workspaceId: id, name: existing.name },
+      targetType: "workspace",
+      targetId: id,
+      workspaceId: id,
+      metadata: { name: existing.name },
     });
   }
 
@@ -107,8 +116,10 @@ export class WorkspaceService {
     workspaceMembersRepository.upsert(workspaceId, userId, this.normalizeRole(role));
     userLogService.record("workspace.member_add", {
       actorId: actor.actorId,
+      targetType: "user",
       targetId: userId,
-      metadata: { workspaceId, role },
+      workspaceId,
+      metadata: { role },
     });
   }
 
@@ -116,8 +127,9 @@ export class WorkspaceService {
     workspaceMembersRepository.remove(workspaceId, userId);
     userLogService.record("workspace.member_remove", {
       actorId: actor.actorId,
+      targetType: "user",
       targetId: userId,
-      metadata: { workspaceId },
+      workspaceId,
     });
   }
 
