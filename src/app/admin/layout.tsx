@@ -1,4 +1,5 @@
 import { requireAdmin } from "@/lib/auth/dal";
+import { logRetentionService } from "@/lib/logs";
 import { workspaceService } from "@/lib/workspaces";
 import { AppSidebar } from "@/components/admin/app-sidebar";
 import { Separator } from "@/components/ui/separator";
@@ -7,6 +8,8 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/s
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   // Admin-only: requireAdmin redirects guests to /login and non-admins to /.
   const user = await requireAdmin();
+  // Opportunistic, throttled auto-cleanup of expired logs (no external scheduler).
+  logRetentionService.maybePrune();
   const workspaces = workspaceService.list().map((w) => ({ id: w.id, slug: w.slug, name: w.name }));
 
   return (
