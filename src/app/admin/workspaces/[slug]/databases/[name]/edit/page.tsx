@@ -4,7 +4,7 @@ import { requireAdmin } from "@/lib/auth/dal";
 import { databaseService } from "@/lib/databases";
 import { workspaceService } from "@/lib/workspaces";
 
-import { DatabaseForm } from "../../../(workspace)/databases/DatabaseForm";
+import { DatabaseForm } from "../../(browse)/DatabaseForm";
 
 export const metadata = { title: "Database · Edit" };
 
